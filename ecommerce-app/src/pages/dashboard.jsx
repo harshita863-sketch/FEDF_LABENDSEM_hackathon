@@ -234,6 +234,45 @@ body{
     color:#7851a9;
 }
 
+/* ---------- Delivery guarantee ---------- */
+.panel .guarantee-box{
+    display:flex;
+    gap:10px;
+    align-items:flex-start;
+    margin-top:15px;
+    padding:12px;
+    border:2px dashed #7851a9;
+    border-radius:10px;
+    background:#f4eefb;
+    cursor:pointer;
+    font-weight:normal;
+    font-size:14px;
+    line-height:1.5;
+}
+
+.panel .guarantee-box input{
+    width:20px;
+    height:20px;
+    padding:0;
+    margin-top:2px;
+    cursor:pointer;
+}
+
+.guarantee-box b{
+    color:#7851a9;
+}
+
+.guarantee-tag{
+    display:inline-block;
+    background:#f4eefb;
+    color:#7851a9;
+    border:1px solid #7851a9;
+    border-radius:12px;
+    padding:2px 10px;
+    font-size:12px;
+    font-weight:bold;
+}
+
 /* ---------- Search and sort ---------- */
 .search-section{
     display:flex;
@@ -772,7 +811,10 @@ const trackMessages = {
 
 const emptyProfile = { name:"", phone:"", email:"", address:"" };
 
-const emptyCheckout = { fullName:"", phone:"", email:"", address:"", payment:"", pin:"" };
+// extra safety option at checkout: pay this amount to guarantee on-time delivery
+const GUARANTEE_FEE = 100;
+
+const emptyCheckout = { fullName:"", phone:"", email:"", address:"", payment:"", pin:"", guarantee:false };
 const emptyProductForm = { id:"", name:"", category:"accessory", price:"", discount:"", stock:"" };
 
 /* ---------- Storage helpers ---------- */
@@ -959,6 +1001,10 @@ export default function Dashboard(){
     const total = cart.reduce(function(sum, c){ return sum + c.price * c.qty; }, 0);
     const cartCount = cart.reduce(function(sum, c){ return sum + c.qty; }, 0);
 
+    // Delivery Guarantee adds Rs 100 to the order
+    const guaranteeFee = checkout.guarantee ? GUARANTEE_FEE : 0;
+    const grandTotal = total + guaranteeFee;
+
     /* ----- checkout ----- */
 
     function openCheckout(){
@@ -1022,7 +1068,10 @@ export default function Dashboard(){
             address:checkout.address,
             payment:checkout.payment,
             items:items,
-            total:total,
+            itemsTotal:total,
+            guarantee:checkout.guarantee,
+            guaranteeFee:guaranteeFee,
+            total:grandTotal,
             status:"Placed",
             date:new Date().toLocaleDateString()
         };
@@ -1170,7 +1219,7 @@ export default function Dashboard(){
             return o.id == orderId ? { ...o, status:status } : o;
         }));
 
-     
+        // keep payment.html in sync if this is the latest order
         const last = load("lastOrder", null);
         if(last != null && last.id == orderId){
             last.status = status;
@@ -1368,7 +1417,10 @@ export default function Dashboard(){
                             {cart.map(function(c){
                                 return <span key={c.id}>{c.name} x {c.qty} - ₹{c.price * c.qty}<br /></span>;
                             })}
-                            <br /><b>Total: ₹{total}</b>
+                            {checkout.guarantee && (
+                                <span>🛡️ Delivery Guarantee - ₹{guaranteeFee}<br /></span>
+                            )}
+                            <br /><b>Total: ₹{grandTotal}</b>
                         </div>
 
                         <label htmlFor="fullName">Full Name</label>
@@ -1405,6 +1457,18 @@ export default function Dashboard(){
                             </div>
                         )}
 
+                        {/* Optional extra safety: pay Rs 100 for guaranteed on-time delivery */}
+                        <label className="guarantee-box" htmlFor="guarantee">
+                            <input type="checkbox" id="guarantee"
+                                checked={checkout.guarantee}
+                                onChange={function(e){ updateCheckout("guarantee", e.target.checked); }} />
+                            <span>
+                                <b>🛡️ Delivery Guarantee - add ₹{GUARANTEE_FEE}</b><br />
+                                Extra safety: we guarantee your delivery will not be delayed.
+                                If it is late, the ₹{GUARANTEE_FEE} is refunded.
+                            </span>
+                        </label>
+
                         <div className="cart-buttons" style={{ marginTop:"20px" }}>
                             <button type="button" className="cart-action" onClick={function(){ setCheckoutOpen(false); }}>Back</button>
                             <button type="submit" className="cart-action green">Place Order</button>
@@ -1438,6 +1502,9 @@ export default function Dashboard(){
                                         <span className={"badge " + o.status}>{o.status}</span><br />
                                         Items: {o.items.map(function(it){ return it.name + " x " + it.qty; }).join(", ")}<br />
                                         Total: ₹{o.total} | Payment: {o.payment}<br />
+                                        {o.guarantee && (
+                                            <><span className="guarantee-tag">🛡️ Delivery Guarantee</span><br /></>
+                                        )}
                                         <button className="cart-action" style={{ margin:"6px 0 0" }} onClick={function(){ trackOrder(o.id); }}>
                                             Track Order
                                         </button>
@@ -1492,6 +1559,9 @@ export default function Dashboard(){
                                     {selected.items.map(function(it, i){
                                         return <span key={i}>{it.name} x {it.qty} - ₹{it.price * it.qty}<br /></span>;
                                     })}
+                                    {selected.guarantee && (
+                                        <>🛡️ Delivery Guarantee: ₹{selected.guaranteeFee}<br /></>
+                                    )}
                                     <b>Total: ₹{selected.total}</b> | Payment: {selected.payment}<br />
                                     Deliver to: {selected.name} | {selected.phone}<br />
                                     Address: {selected.address}
@@ -1680,6 +1750,9 @@ export default function Dashboard(){
                                         Address: {o.address}<br />
                                         Items: {o.items.map(function(it){ return it.name + " x " + it.qty; }).join(", ")}<br />
                                         Total: ₹{o.total} | Payment: {o.payment}<br />
+                                        {o.guarantee && (
+                                            <><span className="guarantee-tag">🛡️ Delivery Guarantee - deliver on time</span><br /></>
+                                        )}
 
                                         {o.status == "Cancelled" ? (
                                             <>Status: <span className="cancel-text">Cancelled</span></>
