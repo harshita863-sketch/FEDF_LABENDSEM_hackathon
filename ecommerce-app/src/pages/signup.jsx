@@ -1,6 +1,8 @@
 
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import "./signuppage.css";
 
 function Signup() {
 
@@ -19,6 +21,8 @@ function Signup() {
       localStorage.setItem("username", username);
       localStorage.setItem("password", password);
       localStorage.setItem("role", "user");
+
+      alert("Registration successful!");
 
       navigate("/dashboard");
     }
